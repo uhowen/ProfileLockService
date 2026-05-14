@@ -8,6 +8,8 @@ Most of what I do sits between creativity and engineering.
 
 If I have an idea for a game, a mechanic, or a tool, I like figuring out how to build it properly.
 
+I'm interested in making things that feel polished, useful, and worth sharing.
+
 ## What I Do
 
 - Game Development
