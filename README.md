@@ -1,32 +1,26 @@
-# Hey there! 👋
+# Hey There! 👋
 
-I'm Owen, a Game Developer who enjoys building gameplay, systems, and ideas that turn into real projects.
+I'm Owen — a Game Developer and Software Engineer. I'm interested in gameplay programming, systems design, and building polished projects that combine creativity with engineering.
 
-I also like Software Engineering, especially writing clean code, solving technical problems, and building systems that are practical and scalable.
+I enjoy creating gameplay systems, mechanics, and tools that feel practical, scalable, and worth sharing. Most of what I do sits between creativity and technical problem solving.
 
-Most of what I do sits between creativity and engineering.
+If I have an idea for a game, mechanic, or feature, I like figuring out how to build it properly from the ground up.
 
-If I have an idea for a game, a mechanic, or a tool, I like figuring out how to build it properly.
+<br>
 
-I'm interested in making things that feel polished, useful, and worth sharing.
+<img src="https://skillicons.dev/icons?i=cpp,cs,python,js,ts,html,css,tailwind,react,nodejs,docker,git,github,figma,vscode" />
 
-## What I Do
+<br><br>
 
-- Game Development
-- Gameplay Programming
-- Systems Design
-- Software Engineering
+![currently](https://img.shields.io/badge/currently-building-green)
+![focus](https://img.shields.io/badge/focus-gameplay_systems-blue)
+![coding](https://img.shields.io/badge/coding-clean_code-purple)
+![learning](https://img.shields.io/badge/learning-new_things-orange)
 
-## A Bit About Me
+<br>
 
-- I enjoy making games and interactive experiences
-- I like building systems that are both fun and technically solid
-- I am always learning and improving through projects
-- I enjoy both the creative and engineering side of development
+▶ Github Stats ⚡
 
-## Interests
+![GitHub stats](https://github-readme-stats.vercel.app/api?username=YOURUSERNAME&show_icons=true&theme=tokyonight&hide_border=true&bg_color=0d1117)
 
-- Game mechanics
-- Engine and gameplay systems
-- Tools and technical features
-- General software projects
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=YOURUSERNAME&layout=compact&theme=tokyonight&hide_border=true&bg_color=0d1117)
