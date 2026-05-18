@@ -18,9 +18,3 @@ If I have an idea for a game, mechanic, or feature, I like figuring out how to b
 ![learning](https://img.shields.io/badge/learning-new_things-orange)
 
 <br>
-
-▶ Github Stats ⚡
-
-![GitHub stats](https://github-readme-stats.vercel.app/api?username=OwenPenetration&show_icons=true&theme=tokyonight&hide_border=true&bg_color=0d1117)
-
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=OwenPenetration&layout=compact&theme=tokyonight&hide_border=true&bg_color=0d1117)
