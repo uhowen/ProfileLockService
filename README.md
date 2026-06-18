@@ -2,6 +2,9 @@
 
 `ProfileLockService` is a Roblox profile persistence library built around strict session ownership, queued writes, and predictable save behavior.
 
+Creator of this system: owen/uhowen
+Please send me a message if anything is wrong or broken.
+
 ## Status
 
 Current version includes:
