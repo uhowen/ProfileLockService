@@ -1,15 +1,17 @@
 local Signal = require(script.Parent.Signal)
 local Path = require(script.Parent.Path)
 local DeepMerge = require(script.Parent.DeepMerge)
+local DeepCopy = require(script.Parent.DeepCopy)
 
 local Profile = {}
 Profile.__index = Profile
 
-function Profile.new(store, key, profileId, data, meta)
+function Profile.new(store, key, profileId, userId, data, meta)
 	local self = setmetatable({
 		_store = store,
 		_key = key,
 		_profileId = profileId,
+		_userId = userId,
 		_data = data,
 		_meta = meta,
 		_dirty = false,
@@ -32,7 +34,7 @@ function Profile:GetProfileId()
 end
 
 function Profile:GetUserId()
-	return self._profileId
+	return self._userId
 end
 
 function Profile:GetKey()
@@ -112,10 +114,17 @@ function Profile:Reconcile()
 end
 
 function Profile:Update(mutator)
-	local result = mutator(self._data)
+	local workingCopy = DeepCopy(self._data)
+	local ok, result = pcall(mutator, workingCopy)
+
+	if not ok then
+		error(result)
+	end
 
 	if result ~= nil then
 		self._data = result
+	else
+		self._data = workingCopy
 	end
 
 	self._dirty = true

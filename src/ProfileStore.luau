@@ -46,7 +46,7 @@ function ProfileStore.new(rawOptions)
 		_hooks = options.hooks,
 		_adapter = adapter,
 		_session = Session.create(),
-		_profilesByUserId = {},
+		_profilesById = {},
 		_profilesByKey = {},
 		_queueByKey = {},
 		_stats = {
@@ -104,9 +104,9 @@ end
 function ProfileStore:GetLoadedProfileCount()
 	local count = 0
 
-	for _ in self._profilesByUserId do
-		count += 1
-	end
+		for _ in self._profilesById do
+			count += 1
+		end
 
 	return count
 end
@@ -121,6 +121,14 @@ function ProfileStore:_getQueue(key)
 	local queue = Queue.new()
 	self._queueByKey[key] = queue
 	return queue
+end
+
+function ProfileStore:_cleanupQueueIfIdle(key)
+	local queue = self._queueByKey[key]
+
+	if queue and queue:IsIdle() and self._profilesByKey[key] == nil then
+		self._queueByKey[key] = nil
+	end
 end
 
 function ProfileStore:_normalizeProfileId(profileId)
@@ -273,11 +281,9 @@ function ProfileStore:_buildLockError(activeSession)
 	})
 end
 
-function ProfileStore:LoadProfileAsync(profileId, loadOptions)
-	assert(not self._closed, "ProfileStore is closed")
-
+function ProfileStore:_loadProfileAsyncInternal(profileId, associatedUserId, loadOptions)
 	local normalizedProfileId = self:_normalizeProfileId(profileId)
-	local existingProfile = self._profilesByUserId[normalizedProfileId]
+	local existingProfile = self._profilesById[normalizedProfileId]
 	if existingProfile then
 		return existingProfile
 	end
@@ -287,7 +293,7 @@ function ProfileStore:LoadProfileAsync(profileId, loadOptions)
 	local requestedPolicy = if type(loadOptions) == "table" and type(loadOptions.loadPolicy) == "string" then loadOptions.loadPolicy else self._loadPolicy
 
 	local ok, resultOk, resultValue = queue:Push(function()
-		local queuedExistingProfile = self._profilesByUserId[normalizedProfileId]
+		local queuedExistingProfile = self._profilesById[normalizedProfileId]
 
 		if queuedExistingProfile then
 			return true, queuedExistingProfile
@@ -343,12 +349,12 @@ function ProfileStore:LoadProfileAsync(profileId, loadOptions)
 			})
 		end
 
-		local profile = Profile.new(self, key, normalizedProfileId, hydratedRecord.data, hydratedRecord.meta)
+		local profile = Profile.new(self, key, normalizedProfileId, associatedUserId, hydratedRecord.data, hydratedRecord.meta)
 		profile._lastLoadAt = hydratedRecord.meta.lastLoadAt
 		profile._lastHeartbeatAt = hydratedRecord.meta.lastHeartbeatAt
 		profile._loadCount = hydratedRecord.meta.loadCount
 
-		self._profilesByUserId[normalizedProfileId] = profile
+		self._profilesById[normalizedProfileId] = profile
 		self._profilesByKey[key] = profile
 		self._stats.loads += 1
 
@@ -369,11 +375,12 @@ function ProfileStore:LoadProfileAsync(profileId, loadOptions)
 						return record
 					end)
 				end)
-				self._profilesByUserId[normalizedProfileId] = nil
-				self._profilesByKey[key] = nil
-				return false, Errors.create("AfterLoadFailed", "afterLoad hook crashed.", {
-					error = hookError,
-				})
+					self._profilesById[normalizedProfileId] = nil
+					self._profilesByKey[key] = nil
+					self:_cleanupQueueIfIdle(key)
+					return false, Errors.create("AfterLoadFailed", "afterLoad hook crashed.", {
+						error = hookError,
+					})
 			end
 		end
 
@@ -393,8 +400,14 @@ function ProfileStore:LoadProfileAsync(profileId, loadOptions)
 	return resultValue
 end
 
+function ProfileStore:LoadProfileAsync(profileId, loadOptions)
+	assert(not self._closed, "ProfileStore is closed")
+	return self:_loadProfileAsyncInternal(profileId, nil, loadOptions)
+end
+
 function ProfileStore:LoadProfileForPlayerAsync(player, loadOptions)
-	return self:LoadProfileAsync(player.UserId, loadOptions)
+	assert(not self._closed, "ProfileStore is closed")
+	return self:_loadProfileAsyncInternal(player.UserId, player.UserId, loadOptions)
 end
 
 function ProfileStore:_serializeProfile(profile, releaseAfterSave)
@@ -554,17 +567,18 @@ function ProfileStore:_releaseProfileAsync(profile, force)
 	local ok, result = self:_saveProfileAsync(profile, true, force)
 
 	if ok then
-		self._profilesByUserId[profile:GetProfileId()] = nil
+		self._profilesById[profile:GetProfileId()] = nil
 		self._profilesByKey[profile:GetKey()] = nil
 		self._stats.releases += 1
 		self.ProfileReleased:Fire(profile)
+		self:_cleanupQueueIfIdle(profile:GetKey())
 	end
 
 	return ok, result
 end
 
 function ProfileStore:GetProfile(profileId)
-	return self._profilesByUserId[self:_normalizeProfileId(profileId)]
+	return self._profilesById[self:_normalizeProfileId(profileId)]
 end
 
 function ProfileStore:GetProfileForPlayer(player)
@@ -574,7 +588,7 @@ end
 function ProfileStore:GetLoadedProfiles()
 	local profiles = {}
 
-	for _, profile in self._profilesByUserId do
+	for _, profile in self._profilesById do
 		table.insert(profiles, profile)
 	end
 
@@ -583,7 +597,7 @@ end
 
 function ProfileStore:SaveProfileAsync(profileId, force)
 	local normalizedProfileId = self:_normalizeProfileId(profileId)
-	local profile = self._profilesByUserId[normalizedProfileId]
+	local profile = self._profilesById[normalizedProfileId]
 
 	if not profile then
 		return false, Errors.create("ProfileNotLoaded", "Cannot save a profile that is not loaded.", {
@@ -596,7 +610,7 @@ end
 
 function ProfileStore:ReleaseProfileAsync(profileId, force)
 	local normalizedProfileId = self:_normalizeProfileId(profileId)
-	local profile = self._profilesByUserId[normalizedProfileId]
+	local profile = self._profilesById[normalizedProfileId]
 
 	if not profile then
 		return false, Errors.create("ProfileNotLoaded", "Cannot release a profile that is not loaded.", {
@@ -622,7 +636,7 @@ end
 
 function ProfileStore:WipeProfileAsync(profileId)
 	local normalizedProfileId = self:_normalizeProfileId(profileId)
-	local loadedProfile = self._profilesByUserId[normalizedProfileId]
+	local loadedProfile = self._profilesById[normalizedProfileId]
 
 	if loadedProfile then
 		local releaseOk, releaseError = loadedProfile:ReleaseAsync(true)
@@ -652,6 +666,8 @@ function ProfileStore:WipeProfileAsync(profileId)
 		error(resultOk)
 	end
 
+	self:_cleanupQueueIfIdle(key)
+
 	return resultOk, resultValue
 end
 
@@ -660,7 +676,7 @@ function ProfileStore:_startAutoSaveLoop()
 		while not self._closed do
 			task.wait(self._autoSaveInterval)
 
-			for _, profile in self._profilesByUserId do
+			for _, profile in self._profilesById do
 				if profile:IsDirty() and not profile:IsReleased() then
 					task.spawn(function()
 						self:_saveProfileAsync(profile, false, false)
@@ -676,12 +692,10 @@ function ProfileStore:_startSessionHeartbeatLoop()
 		while not self._closed do
 			task.wait(self._sessionHeartbeatInterval)
 
-			for _, profile in self._profilesByUserId do
+			for _, profile in self._profilesById do
 				if not profile:IsReleased() then
 					task.spawn(function()
-						if profile:IsDirty() then
-							self:_saveProfileAsync(profile, false, false)
-						else
+						if not profile:IsDirty() then
 							self:_refreshProfileSessionAsync(profile)
 						end
 					end)

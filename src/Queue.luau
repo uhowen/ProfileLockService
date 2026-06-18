@@ -8,6 +8,10 @@ function Queue.new()
 	}, Queue)
 end
 
+function Queue:IsIdle()
+	return not self._running and #self._waiting == 0
+end
+
 function Queue:Push(executor)
 	local thread = coroutine.running()
 

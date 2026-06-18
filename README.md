@@ -309,6 +309,7 @@ local store = service:CreateStore({
 
 - `profile:GetProfileId()`
 - `profile:GetUserId()`
+  Returns the player `UserId` only when the profile was loaded through `LoadProfileForPlayerAsync`.
 - `profile:GetKey()`
 - `profile:GetData()`
 - `profile:Get(path, fallback)`
@@ -396,3 +397,7 @@ local profile = store:LoadProfileAsync(`guild_{guildId}`)
 - keep `sessionHeartbeatInterval` lower than `lockTimeout`
 - do not mutate nested data manually unless you mark it dirty
 - if you want per-player leaderstats, build that in your game code, not in the persistence library
+
+## Tests
+
+The repo includes a lightweight memory-adapter self-test under [tests/MemoryAdapter.selftest.luau](C:/Users/woody/Desktop/owens%20new%20portfolioo/profile-lock-service-repo/tests/MemoryAdapter.selftest.luau).
