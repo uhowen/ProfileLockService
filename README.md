@@ -1,61 +1,27 @@
 # ProfileLockService
 
-`ProfileLockService` is a Roblox profile persistence library built around strict session ownership, queued writes, and predictable save behavior.
+`ProfileLockService` is a Roblox persistence library for games that want strict profile ownership, queued writes, autosave, migrations, and a cleaner API than raw `DataStoreService`.
 
-Creator of this system: owen/uhowen
+This is built to be generic.
 
-If anything is broken or unclear, open an issue or send me a message.
+You do not have to use coins, cash, or any specific schema.
 
-## What it is
+You choose:
 
-This library is for Roblox games that need to save player data safely.
+- what your profile keys are
+- what your data looks like
+- when your game changes it
 
-It is designed to help with:
+## What it does
 
-- one-server ownership per profile
-- cleaner profile loading and releasing
-- structured default data
-- schema migrations
-- controlled save flow
-- easier long-term maintenance
-
-## Beginner explanation
-
-If you are new to Roblox data systems, think about it like this:
-
-- a `store` manages a whole group of player profiles
-- a `profile` is one player's loaded data
-- `LoadProfileAsync` gets a player's data and locks it to the current server
-- `SaveAsync` writes the latest changes back
-- `ReleaseAsync` saves and unlocks the profile when the player leaves
-
-So the normal flow is:
-
-1. Create a store
-2. Load a profile when a player joins
-3. Change the profile data while they play
-4. Save it automatically or manually
-5. Release it when they leave
-
-## Status
-
-Current version includes:
-
-- session locking
-- stale lock detection
-- configurable load policies
-- autosave
-- dirty tracking
-- queued writes per profile
-- schema default fill
-- migration pipeline
-- adapter abstraction
-- memory adapter for tests
-- manual profile wipe support
-- request budget awareness
-- lifecycle hooks
-- release on player leave
-- release on shutdown
+- one live session owns a profile at a time
+- dirty profiles autosave on an interval
+- clean profiles still refresh their session lock through a heartbeat
+- writes are queued per profile key
+- stale locks can be recovered with load policies
+- schema defaults and migrations are supported
+- raw datastore budget checks are supported
+- profiles can be released on player leave and server shutdown
 
 ## Layout
 
@@ -63,6 +29,7 @@ Current version includes:
 ProfileLockService/
   default.project.json
   init.luau
+  LICENSE
   README.md
   examples/
     Basic.server.luau
@@ -86,17 +53,14 @@ ProfileLockService/
     StoreOptions.luau
 ```
 
-## Installation
+## Install
 
-Put the module where your server can require it.
-
-The examples below assume it is available at:
+Require the module from a server-accessible location.
 
 ```luau
-ReplicatedStorage.ProfileLockService
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ProfileLockService = require(ReplicatedStorage.ProfileLockService)
 ```
-
-If you are using Rojo, the included `default.project.json` already maps it for that setup.
 
 ## Quick start
 
@@ -104,362 +68,246 @@ If you are using Rojo, the included `default.project.json` already maps it for t
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataService = require(ReplicatedStorage.ProfileLockService)
+local ProfileLockService = require(ReplicatedStorage.ProfileLockService)
 
-local dataService = DataService.new()
+local service = ProfileLockService.new()
 
-local profileStore = dataService:CreateStore({
+local store = service:CreateStore({
 	name = "PlayerProfiles",
+	scope = "live",
+	keyPrefix = "profile",
+	autoSaveInterval = 60,
+	sessionHeartbeatInterval = 30,
+	lockTimeout = 180,
 	defaults = {
-		coins = 0,
-		level = 1,
-	},
-})
-
-profileStore:BindToPlayerRemoving(Players)
-profileStore:BindToClose()
-
-Players.PlayerAdded:Connect(function(player)
-	local profile, loadError = profileStore:LoadProfileAsync(player.UserId)
-
-	if not profile then
-		player:Kick("Failed to load your profile.")
-		warn(loadError)
-		return
-	end
-
-	profile:Increment({"coins"}, 25)
-end)
-```
-
-## Step by step for beginners
-
-### 1. Create a store
-
-You usually create one store for one main save structure.
-
-```luau
-local profileStore = dataService:CreateStore({
-	name = "PlayerProfiles",
-	defaults = {
-		coins = 0,
-		level = 1,
+		progress = {
+			stage = 1,
+			checkpoints = {},
+		},
 		settings = {
 			music = true,
+			quality = "high",
+		},
+		stats = {
+			joins = 0,
 		},
 	},
 })
+
+store:BindToPlayerRemoving(Players)
+store:BindToClose()
+
+Players.PlayerAdded:Connect(function(player)
+	local profile, loadError = store:LoadProfileForPlayerAsync(player)
+
+	if not profile then
+		warn(loadError)
+		player:Kick("Could not load your profile.")
+		return
+	end
+
+	profile:Increment({"stats", "joins"}, 1)
+	profile:Set({"settings", "lastSeenJobId"}, game.JobId)
+end)
 ```
 
-### 2. Load the player's profile
+## Core idea
 
-This should happen when they join.
+A `DataService` owns stores.
+
+A `ProfileStore` owns a group of profiles under one datastore.
+
+A `Profile` is one loaded data entry that belongs to one live session.
+
+The normal flow is:
+
+1. Create a store
+2. Load a profile by profile id or player
+3. Edit the profile data
+4. Let autosave or manual saves write it
+5. Release the profile when the session ends
+
+## Generic profile keys
+
+The store is key-based, not cash-system-based.
+
+You can load profiles with any string or number id:
 
 ```luau
-local profile, loadError = profileStore:LoadProfileAsync(player.UserId)
-
-if not profile then
-	player:Kick("Could not load your data.")
-	warn(loadError)
-	return
-end
+local profile = store:LoadProfileAsync("guild_4821")
+local settings = store:LoadProfileAsync("global_settings")
+local slot = store:LoadProfileAsync(`player_{player.UserId}_slot_2`)
 ```
 
-### 3. Change the player's data
-
-You can use different methods depending on what you want to do.
-
-### 4. Let autosave handle it or save manually
-
-The service can autosave, but you can also call `SaveAsync()` yourself.
-
-### 5. Release the profile
-
-This should happen when the player leaves or when the server closes.
+There is also a player helper for the common case:
 
 ```luau
-profileStore:BindToPlayerRemoving(Players)
-profileStore:BindToClose()
+local profile = store:LoadProfileForPlayerAsync(player)
 ```
 
-## Common ways to edit data
+## Editing data
 
-### `profile:Set(path, value)`
-
-Use this when you want to set a field directly.
+### Set one value
 
 ```luau
-profile:Set({"coins"}, 500)
 profile:Set({"settings", "music"}, false)
 ```
 
-### `profile:Increment(path, amount)`
-
-Use this when you want to add to a number.
+### Increment a number
 
 ```luau
-profile:Increment({"coins"}, 25)
-profile:Increment({"wins"}, 1)
+profile:Increment({"stats", "joins"}, 1)
 ```
 
-### `profile:Get(path, fallback)`
-
-Use this when you want to read one value safely.
+### Read a value
 
 ```luau
-local coins = profile:Get({"coins"}, 0)
-local musicEnabled = profile:Get({"settings", "music"}, true)
+local stage = profile:Get({"progress", "stage"}, 1)
 ```
 
-### `profile:Update(mutator)`
-
-Use this when you want to change multiple values at once.
+### Update several values at once
 
 ```luau
 profile:Update(function(data)
-	data.coins += 100
-	data.level += 1
+	data.progress.stage += 1
+	data.progress.checkpoints = data.progress.checkpoints or {}
+	table.insert(data.progress.checkpoints, os.time())
 	return data
 end)
 ```
 
-### `profile:Remove(path)`
-
-Use this when you want to delete a field.
+### Remove a value
 
 ```luau
-profile:Remove({"temporaryBoost"})
+profile:Remove({"temporaryState"})
 ```
 
-### `profile:Reconcile()`
-
-Use this when you want to re-apply missing defaults into loaded data.
+### Reconcile missing defaults
 
 ```luau
 profile:Reconcile()
 ```
 
-### `profile:Touch()`
-
-Use this when you changed the table yourself and just want to mark it dirty.
+### Mark manual table edits dirty
 
 ```luau
 local data = profile:GetData()
-data.lastSeen = os.time()
+data.settings.quality = "low"
 profile:Touch()
 ```
 
-## Beginner examples
+## Autosave and session locks
 
-### Simple coins system
+Two background systems keep the store healthy:
 
-```luau
-Players.PlayerAdded:Connect(function(player)
-	local profile = profileStore:LoadProfileAsync(player.UserId)
-	if not profile then
-		player:Kick("Could not load your data.")
-		return
-	end
+- `autoSaveInterval` saves dirty profiles
+- `sessionHeartbeatInterval` refreshes live locks even when nothing changed
 
-	profile:Increment({"coins"}, 50)
-end)
-```
+This matters because a profile should not look stale just because the player was idle.
 
-### Nested settings
+Recommended rule:
+
+- set `sessionHeartbeatInterval` lower than `lockTimeout`
+
+Example:
 
 ```luau
-local profileStore = dataService:CreateStore({
+local store = service:CreateStore({
 	name = "PlayerProfiles",
 	defaults = {
-		settings = {
-			music = true,
-			sfx = true,
-		},
+		value = 0,
 	},
-})
-
-profile:Set({"settings", "music"}, false)
-local musicEnabled = profile:Get({"settings", "music"}, true)
-```
-
-### Inventory list
-
-```luau
-profile:Update(function(data)
-	data.inventory = data.inventory or {}
-	table.insert(data.inventory, "WoodenSword")
-	return data
-end)
-```
-
-### Manual save
-
-```luau
-local ok, saveError = profile:SaveAsync()
-
-if not ok then
-	warn(saveError)
-end
-```
-
-### Force save
-
-```luau
-profile:SaveAsync(true)
-```
-
-This ignores the normal dirty check and attempts a save anyway.
-
-### Release example
-
-```luau
-local ok, releaseError = profile:ReleaseAsync()
-
-if not ok then
-	warn(releaseError)
-end
-```
-
-## Store options
-
-Here is a fuller example with the main options:
-
-```luau
-local profileStore = dataService:CreateStore({
-	name = "PlayerProfiles",
-	scope = "live",
-	keyPrefix = "profile",
 	autoSaveInterval = 60,
-	maxRetries = 4,
-	retryDelay = 0.5,
-	retryDelayCap = 2,
-	schemaVersion = 2,
-	loadPolicy = "default",
-	lockTimeout = 1800,
-	respectRequestBudgets = true,
-	defaults = {
-		coins = 0,
-		level = 1,
-		inventory = {},
-		settings = {
-			music = true,
-		},
-	},
-	migrations = {
-		[2] = function(data)
-			data.settings = data.settings or {}
-			if data.settings.music == nil then
-				data.settings.music = true
-			end
-
-			return data
-		end,
-	},
-	hooks = {
-		validate = function(data, stage)
-			return type(data.coins) == "number" and data.coins >= 0
-		end,
-	},
+	sessionHeartbeatInterval = 30,
+	lockTimeout = 180,
 })
 ```
-
-## What the main options do
-
-- `name`: the datastore name
-- `scope`: the datastore scope
-- `keyPrefix`: prefix used before the user id
-- `autoSaveInterval`: how often dirty profiles are autosaved
-- `maxRetries`: how many times datastore actions retry
-- `retryDelay`: starting retry wait time
-- `retryDelayCap`: maximum retry wait time
-- `schemaVersion`: current data version
-- `loadPolicy`: how lock conflicts are handled
-- `lockTimeout`: how old a session must be before a stale steal is allowed
-- `respectRequestBudgets`: whether datastore budgets are checked before requests
-- `defaults`: the default data structure
-- `migrations`: functions used to move old data to new versions
-- `hooks`: optional custom logic for validation or extra behavior
 
 ## Load policies
 
 ### `default`
 
-This is the safest option.
-
-If another live server owns the profile, loading fails.
+Fails if another live session owns the profile.
 
 ### `steal`
 
-This only takes over the profile if the old lock is stale.
-
-Use this if you want stale server recovery without always forcing ownership.
+Takes over only if the existing session is stale.
 
 ### `force`
 
-This takes ownership immediately.
+Always takes ownership immediately.
 
-Use this carefully.
+Use it carefully.
 
-## Methods beginners will use most
-
-### DataService
-
-- `dataService:CreateStore(options)`
-- `dataService:GetStore(name)`
-- `dataService:CloseAsync()`
-
-### ProfileStore
-
-- `profileStore:LoadProfileAsync(userId, loadOptions)`
-- `profileStore:GetProfile(userId)`
-- `profileStore:SaveProfileAsync(userId, force)`
-- `profileStore:ReleaseProfileAsync(userId, force)`
-- `profileStore:BindToPlayerRemoving(players)`
-- `profileStore:BindToClose()`
-
-### Profile
-
-- `profile:GetData()`
-- `profile:Get(path, fallback)`
-- `profile:Set(path, value)`
-- `profile:Increment(path, amount)`
-- `profile:Update(mutator)`
-- `profile:SaveAsync(force)`
-- `profile:ReleaseAsync(force)`
-
-## Events
-
-- `profileStore.ProfileLoaded`
-- `profileStore.ProfileReleased`
-- `profileStore.ProfileSaved`
-- `profileStore.ProfileSaveFailed`
-- `profile.BeforeSave`
-- `profile.Saved`
-- `profile.SaveFailed`
-- `profile.Released`
-
-## Adapters
-
-Default behavior uses Roblox `DataStoreService` through `DataStoreAdapter`.
-
-For tests or local simulation you can inject `MemoryAdapter`.
+## Store options
 
 ```luau
-local MemoryAdapter = require(ReplicatedStorage.ProfileLockService.src.adapters.MemoryAdapter)
-
-local profileStore = dataService:CreateStore({
+local store = service:CreateStore({
 	name = "PlayerProfiles",
+	scope = "live",
+	keyPrefix = "profile",
+	autoSaveInterval = 60,
+	sessionHeartbeatInterval = 30,
+	maxRetries = 4,
+	retryDelay = 0.5,
+	retryDelayCap = 2,
+	schemaVersion = 2,
+	loadPolicy = "default",
+	lockTimeout = 180,
+	budgetWaitTimeout = 10,
+	budgetPollInterval = 0.25,
+	respectRequestBudgets = true,
 	defaults = {
-		coins = 0,
+		progress = {
+			stage = 1,
+		},
 	},
-	adapter = MemoryAdapter.new(),
+	migrations = {
+		[2] = function(data)
+			data.progress = data.progress or {}
+			data.progress.checkpoints = data.progress.checkpoints or {}
+			return data
+		end,
+	},
+	hooks = {
+		validate = function(data, stage)
+			return type(data.progress.stage) == "number" and data.progress.stage >= 1
+		end,
+	},
 })
 ```
 
-## Full method list
+## Useful methods
 
-### Profile methods
+### DataService
 
+- `service:CreateStore(options)`
+- `service:GetStore(name)`
+- `service:GetStores()`
+- `service:DestroyStore(name)`
+- `service:CloseAsync()`
+
+### ProfileStore
+
+- `store:BuildProfileKey(profileId)`
+- `store:LoadProfileAsync(profileId, loadOptions)`
+- `store:LoadProfileForPlayerAsync(player, loadOptions)`
+- `store:GetProfile(profileId)`
+- `store:GetProfileForPlayer(player)`
+- `store:GetLoadedProfiles()`
+- `store:GetLoadedProfileCount()`
+- `store:GetStats()`
+- `store:SaveProfileAsync(profileId, force)`
+- `store:ReleaseProfileAsync(profileId, force)`
+- `store:ViewRawAsync(profileId)`
+- `store:WipeProfileAsync(profileId)`
+- `store:BindToPlayerRemoving(players)`
+- `store:BindToClose()`
+- `store:CloseAsync()`
+
+### Profile
+
+- `profile:GetProfileId()`
 - `profile:GetUserId()`
 - `profile:GetKey()`
 - `profile:GetData()`
@@ -468,6 +316,7 @@ local profileStore = dataService:CreateStore({
 - `profile:GetLoadCount()`
 - `profile:GetLastLoadAt()`
 - `profile:GetLastSaveAt()`
+- `profile:GetLastHeartbeatAt()`
 - `profile:IsDirty()`
 - `profile:IsReleased()`
 - `profile:MarkDirty()`
@@ -478,42 +327,72 @@ local profileStore = dataService:CreateStore({
 - `profile:Reconcile()`
 - `profile:Update(mutator)`
 - `profile:SaveAsync(force)`
+- `profile:ListenToRelease(callback)`
+- `profile:ListenToSave(callback)`
+- `profile:ListenToSaveFailed(callback)`
 - `profile:ReleaseAsync(force)`
 
-### Store methods
+## Events
 
-- `dataService:CreateStore(options)`
-- `dataService:GetStore(name)`
-- `dataService:GetStores()`
-- `dataService:DestroyStore(name)`
-- `dataService:CloseAsync()`
-- `profileStore:GetName()`
-- `profileStore:GetDefaults()`
-- `profileStore:GetSession()`
-- `profileStore:GetStats()`
-- `profileStore:GetLoadedProfileCount()`
-- `profileStore:LoadProfileAsync(userId, loadOptions)`
-- `profileStore:GetProfile(userId)`
-- `profileStore:GetLoadedProfiles()`
-- `profileStore:SaveProfileAsync(userId, force)`
-- `profileStore:ReleaseProfileAsync(userId, force)`
-- `profileStore:ViewRawAsync(userId)`
-- `profileStore:WipeProfileAsync(userId)`
-- `profileStore:BindToPlayerRemoving(players)`
-- `profileStore:BindToClose()`
-- `profileStore:CloseAsync()`
+- `store.ProfileLoaded`
+- `store.ProfileReleased`
+- `store.ProfileSaved`
+- `store.ProfileSaveFailed`
+- `profile.BeforeSave`
+- `profile.Saved`
+- `profile.SaveFailed`
+- `profile.Released`
 
-## Things to avoid
+## Memory adapter
 
-- do not load the same player's profile repeatedly without reason
-- do not keep raw references everywhere if you can access the profile cleanly
-- do not forget to release profiles when players leave
-- do not force ownership unless you understand the tradeoff
-- do not mutate deep data manually without marking it dirty
+You can test store behavior without touching Roblox datastores.
 
-## Remaining work
+```luau
+local MemoryAdapter = require(ReplicatedStorage.ProfileLockService.src.adapters.MemoryAdapter)
 
-- optional backup snapshots
-- batch export tooling
-- more aggressive conflict recovery strategies
-- stronger automated test coverage
+local store = service:CreateStore({
+	name = "LocalTest",
+	defaults = {
+		value = 0,
+	},
+	adapter = MemoryAdapter.new(),
+})
+
+local profile = store:LoadProfileAsync("test_key")
+profile:Increment({"value"}, 10)
+profile:SaveAsync()
+```
+
+## Example patterns
+
+### Player profile
+
+```luau
+local profile = store:LoadProfileForPlayerAsync(player)
+```
+
+### Multiple slots per player
+
+```luau
+local profile = store:LoadProfileAsync(`player_{player.UserId}_slot_1`)
+```
+
+### World state
+
+```luau
+local profile = store:LoadProfileAsync("world_state")
+```
+
+### Guild or clan data
+
+```luau
+local profile = store:LoadProfileAsync(`guild_{guildId}`)
+```
+
+## Notes
+
+- release profiles when the owner is done with them
+- avoid forcing lock ownership unless you really mean it
+- keep `sessionHeartbeatInterval` lower than `lockTimeout`
+- do not mutate nested data manually unless you mark it dirty
+- if you want per-player leaderstats, build that in your game code, not in the persistence library

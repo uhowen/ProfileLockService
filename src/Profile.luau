@@ -5,17 +5,18 @@ local DeepMerge = require(script.Parent.DeepMerge)
 local Profile = {}
 Profile.__index = Profile
 
-function Profile.new(store, key, userId, data, meta)
+function Profile.new(store, key, profileId, data, meta)
 	local self = setmetatable({
 		_store = store,
 		_key = key,
-		_userId = userId,
+		_profileId = profileId,
 		_data = data,
 		_meta = meta,
 		_dirty = false,
 		_released = false,
 		_lastSaveAt = 0,
 		_lastLoadAt = os.time(),
+		_lastHeartbeatAt = meta.lastHeartbeatAt or 0,
 		_loadCount = 1,
 		BeforeSave = Signal.new(),
 		Released = Signal.new(),
@@ -26,8 +27,12 @@ function Profile.new(store, key, userId, data, meta)
 	return self
 end
 
+function Profile:GetProfileId()
+	return self._profileId
+end
+
 function Profile:GetUserId()
-	return self._userId
+	return self._profileId
 end
 
 function Profile:GetKey()
@@ -60,6 +65,10 @@ end
 
 function Profile:GetLastSaveAt()
 	return self._lastSaveAt
+end
+
+function Profile:GetLastHeartbeatAt()
+	return self._lastHeartbeatAt
 end
 
 function Profile:IsDirty()
@@ -120,6 +129,18 @@ end
 
 function Profile:SaveAsync(force)
 	return self._store:_saveProfileAsync(self, false, force == true)
+end
+
+function Profile:ListenToRelease(callback)
+	return self.Released:Connect(callback)
+end
+
+function Profile:ListenToSave(callback)
+	return self.Saved:Connect(callback)
+end
+
+function Profile:ListenToSaveFailed(callback)
+	return self.SaveFailed:Connect(callback)
 end
 
 function Profile:ReleaseAsync(force)

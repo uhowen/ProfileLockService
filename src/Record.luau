@@ -1,5 +1,6 @@
 local DeepCopy = require(script.Parent.DeepCopy)
 local DeepMerge = require(script.Parent.DeepMerge)
+local Session = require(script.Parent.Session)
 
 local Record = {}
 
@@ -15,9 +16,11 @@ function Record.normalize(rawRecord, defaults)
 	meta.updatedAt = meta.updatedAt or now
 	meta.lastLoadAt = meta.lastLoadAt or 0
 	meta.lastSaveAt = meta.lastSaveAt or 0
+	meta.lastHeartbeatAt = meta.lastHeartbeatAt or 0
 	meta.loadCount = meta.loadCount or 0
 	meta.schemaVersion = meta.schemaVersion or 1
 	meta.userIds = meta.userIds or {}
+	meta.profileIds = meta.profileIds or {}
 
 	return normalized
 end
@@ -28,12 +31,13 @@ function Record.snapshot(profile, session, schemaVersion, defaults, releaseAfter
 
 	meta.updatedAt = os.time()
 	meta.lastSaveAt = meta.updatedAt
+	meta.lastHeartbeatAt = meta.updatedAt
 	meta.schemaVersion = schemaVersion
 
 	if releaseAfterSave then
 		meta.session = nil
 	else
-		meta.session = DeepCopy(session)
+		meta.session = Session.touch(session)
 	end
 
 	return {

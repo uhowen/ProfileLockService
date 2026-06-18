@@ -1,5 +1,6 @@
 return {
 	DefaultAutoSaveInterval = 60,
+	DefaultSessionHeartbeatInterval = 60,
 	DefaultMaxRetries = 4,
 	DefaultRetryDelay = 0.5,
 	DefaultRetryDelayCap = 2,

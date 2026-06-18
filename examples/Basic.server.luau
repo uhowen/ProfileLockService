@@ -1,29 +1,35 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataService = require(ReplicatedStorage.ProfileLockService)
+local ProfileLockService = require(ReplicatedStorage.ProfileLockService)
 
-local service = DataService.new()
+local service = ProfileLockService.new()
 
 local store = service:CreateStore({
 	name = "PlayerProfiles",
 	scope = "live",
+	keyPrefix = "profile",
+	autoSaveInterval = 60,
+	sessionHeartbeatInterval = 30,
+	lockTimeout = 180,
 	defaults = {
-		coins = 0,
-		level = 1,
-		inventory = {},
+		progress = {
+			stage = 1,
+			checkpoints = {},
+		},
 		settings = {
 			music = true,
+			quality = "high",
+		},
+		stats = {
+			joins = 0,
 		},
 	},
 	schemaVersion = 2,
 	migrations = {
 		[2] = function(data)
-			data.settings = data.settings or {}
-			if data.settings.music == nil then
-				data.settings.music = true
-			end
-
+			data.progress = data.progress or {}
+			data.progress.checkpoints = data.progress.checkpoints or {}
 			return data
 		end,
 	},
@@ -33,7 +39,7 @@ store:BindToPlayerRemoving(Players)
 store:BindToClose()
 
 Players.PlayerAdded:Connect(function(player)
-	local profile, loadError = store:LoadProfileAsync(player.UserId)
+	local profile, loadError = store:LoadProfileForPlayerAsync(player)
 
 	if not profile then
 		warn(loadError)
@@ -41,5 +47,6 @@ Players.PlayerAdded:Connect(function(player)
 		return
 	end
 
-	profile:Increment({"coins"}, 25)
+	profile:Increment({"stats", "joins"}, 1)
+	profile:Set({"settings", "lastSeenPlaceId"}, game.PlaceId)
 end)

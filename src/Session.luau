@@ -7,11 +7,18 @@ function Session.create()
 		placeId = game.PlaceId,
 		jobId = game.JobId,
 		acquiredAt = os.time(),
+		heartbeatAt = os.time(),
 	}
 end
 
 function Session.clone(session)
 	return DeepCopy(session)
+end
+
+function Session.touch(session)
+	local nextSession = Session.clone(session)
+	nextSession.heartbeatAt = os.time()
+	return nextSession
 end
 
 function Session.isSame(a, b)
@@ -27,7 +34,7 @@ function Session.age(session)
 		return math.huge
 	end
 
-	return os.time() - (session.acquiredAt or 0)
+	return os.time() - (session.heartbeatAt or session.acquiredAt or 0)
 end
 
 function Session.isStale(session, timeoutSeconds)

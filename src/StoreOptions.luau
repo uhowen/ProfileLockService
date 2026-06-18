@@ -75,6 +75,7 @@ local function normalizeOptions(options)
 		schemaVersion = options.schemaVersion or Constants.DefaultSchemaVersion,
 		migrations = normalizeMigrations(options.migrations),
 		autoSaveInterval = options.autoSaveInterval or Constants.DefaultAutoSaveInterval,
+		sessionHeartbeatInterval = options.sessionHeartbeatInterval or Constants.DefaultSessionHeartbeatInterval,
 		maxRetries = options.maxRetries or Constants.DefaultMaxRetries,
 		retryDelay = options.retryDelay or Constants.DefaultRetryDelay,
 		retryDelayCap = options.retryDelayCap or Constants.DefaultRetryDelayCap,
@@ -98,6 +99,10 @@ local function normalizeOptions(options)
 
 	if type(normalized.autoSaveInterval) ~= "number" or normalized.autoSaveInterval <= 0 then
 		error("options.autoSaveInterval must be greater than 0")
+	end
+
+	if type(normalized.sessionHeartbeatInterval) ~= "number" or normalized.sessionHeartbeatInterval <= 0 then
+		error("options.sessionHeartbeatInterval must be greater than 0")
 	end
 
 	if type(normalized.maxRetries) ~= "number" or normalized.maxRetries < 1 then
