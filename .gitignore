@@ -1,0 +1,5 @@
+sourcemap.json
+Packages/
+*.rbxl
+*.rbxlx
+*.testez.json

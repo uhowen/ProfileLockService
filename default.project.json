@@ -1,0 +1,11 @@
+{
+  "name": "player-data-service",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "PlayerDataService": {
+        "$path": "."
+      }
+    }
+  }
+}
