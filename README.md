@@ -1,6 +1,6 @@
-# Player Data Service
+# ProfileLockService
 
-Structured Roblox player data handling with session locking, configurable lock takeover policies, queued saves, schema defaults, migrations, adapter support, and release-on-shutdown support.
+`ProfileLockService` is a Roblox profile persistence library built around strict session ownership, queued writes, and predictable save behavior.
 
 ## Status
 
@@ -25,7 +25,7 @@ Current version includes:
 ## Layout
 
 ```text
-player-data-service/
+ProfileLockService/
   default.project.json
   init.luau
   README.md
@@ -54,14 +54,14 @@ player-data-service/
 ## API
 
 ```luau
-local DataService = require(ReplicatedStorage.PlayerDataService)
+local DataService = require(ReplicatedStorage.ProfileLockService)
 
 local dataService = DataService.new()
 
-local playerStore = dataService:CreateStore({
-	name = "PlayerData",
+local profileStore = dataService:CreateStore({
+	name = "PlayerProfiles",
 	scope = "live",
-	keyPrefix = "player",
+	keyPrefix = "profile",
 	autoSaveInterval = 60,
 	maxRetries = 4,
 	retryDelay = 0.5,
@@ -102,28 +102,28 @@ local playerStore = dataService:CreateStore({
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataService = require(ReplicatedStorage.PlayerDataService)
+local DataService = require(ReplicatedStorage.ProfileLockService)
 
 local dataService = DataService.new()
 
-local playerStore = dataService:CreateStore({
-	name = "PlayerData",
+local profileStore = dataService:CreateStore({
+	name = "PlayerProfiles",
 	defaults = {
 		coins = 0,
 		level = 1,
 	},
 })
 
-playerStore:BindToPlayerRemoving(Players)
-playerStore:BindToClose()
+profileStore:BindToPlayerRemoving(Players)
+profileStore:BindToClose()
 
 Players.PlayerAdded:Connect(function(player)
-	local profile, loadError = playerStore:LoadProfileAsync(player.UserId, {
+	local profile, loadError = profileStore:LoadProfileAsync(player.UserId, {
 		loadPolicy = "default",
 	})
 
 	if not profile then
-		player:Kick("Failed to load your data.")
+		player:Kick("Failed to load your profile.")
 		warn(loadError)
 		return
 	end
@@ -135,7 +135,7 @@ end)
 ## Working with profiles
 
 ```luau
-local profile = playerStore:GetProfile(player.UserId)
+local profile = profileStore:GetProfile(player.UserId)
 
 if profile then
 	profile:Update(function(data)
@@ -158,10 +158,10 @@ Default behavior uses Roblox `DataStoreService` through `DataStoreAdapter`.
 For tests or local simulation you can inject `MemoryAdapter`.
 
 ```luau
-local MemoryAdapter = require(ReplicatedStorage.PlayerDataService.src.adapters.MemoryAdapter)
+local MemoryAdapter = require(ReplicatedStorage.ProfileLockService.src.adapters.MemoryAdapter)
 
-local playerStore = dataService:CreateStore({
-	name = "PlayerData",
+local profileStore = dataService:CreateStore({
+	name = "PlayerProfiles",
 	defaults = {
 		coins = 0,
 	},
@@ -198,28 +198,28 @@ local playerStore = dataService:CreateStore({
 - `dataService:GetStores()`
 - `dataService:DestroyStore(name)`
 - `dataService:CloseAsync()`
-- `playerStore:GetName()`
-- `playerStore:GetDefaults()`
-- `playerStore:GetSession()`
-- `playerStore:GetStats()`
-- `playerStore:GetLoadedProfileCount()`
-- `playerStore:LoadProfileAsync(userId, loadOptions)`
-- `playerStore:GetProfile(userId)`
-- `playerStore:GetLoadedProfiles()`
-- `playerStore:SaveProfileAsync(userId, force)`
-- `playerStore:ReleaseProfileAsync(userId, force)`
-- `playerStore:ViewRawAsync(userId)`
-- `playerStore:WipeProfileAsync(userId)`
-- `playerStore:BindToPlayerRemoving(players)`
-- `playerStore:BindToClose()`
-- `playerStore:CloseAsync()`
+- `profileStore:GetName()`
+- `profileStore:GetDefaults()`
+- `profileStore:GetSession()`
+- `profileStore:GetStats()`
+- `profileStore:GetLoadedProfileCount()`
+- `profileStore:LoadProfileAsync(userId, loadOptions)`
+- `profileStore:GetProfile(userId)`
+- `profileStore:GetLoadedProfiles()`
+- `profileStore:SaveProfileAsync(userId, force)`
+- `profileStore:ReleaseProfileAsync(userId, force)`
+- `profileStore:ViewRawAsync(userId)`
+- `profileStore:WipeProfileAsync(userId)`
+- `profileStore:BindToPlayerRemoving(players)`
+- `profileStore:BindToClose()`
+- `profileStore:CloseAsync()`
 
 ## Events
 
-- `playerStore.ProfileLoaded`
-- `playerStore.ProfileReleased`
-- `playerStore.ProfileSaved`
-- `playerStore.ProfileSaveFailed`
+- `profileStore.ProfileLoaded`
+- `profileStore.ProfileReleased`
+- `profileStore.ProfileSaved`
+- `profileStore.ProfileSaveFailed`
 - `profile.BeforeSave`
 - `profile.Saved`
 - `profile.SaveFailed`

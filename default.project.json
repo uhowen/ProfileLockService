@@ -1,9 +1,9 @@
 {
-  "name": "player-data-service",
+  "name": "profile-lock-service",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "PlayerDataService": {
+      "ProfileLockService": {
         "$path": "."
       }
     }

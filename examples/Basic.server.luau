@@ -1,12 +1,12 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataService = require(ReplicatedStorage.PlayerDataService)
+local DataService = require(ReplicatedStorage.ProfileLockService)
 
 local service = DataService.new()
 
 local store = service:CreateStore({
-	name = "PlayerData",
+	name = "PlayerProfiles",
 	scope = "live",
 	defaults = {
 		coins = 0,
