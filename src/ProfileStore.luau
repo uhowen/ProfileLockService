@@ -104,9 +104,9 @@ end
 function ProfileStore:GetLoadedProfileCount()
 	local count = 0
 
-		for _ in self._profilesById do
-			count += 1
-		end
+	for _ in self._profilesById do
+		count += 1
+	end
 
 	return count
 end
@@ -585,6 +585,10 @@ function ProfileStore:GetProfileForPlayer(player)
 	return self:GetProfile(player.UserId)
 end
 
+function ProfileStore:HasProfile(profileId)
+	return self:GetProfile(profileId) ~= nil
+end
+
 function ProfileStore:GetLoadedProfiles()
 	local profiles = {}
 
@@ -632,6 +636,16 @@ function ProfileStore:ViewRawAsync(profileId)
 	end
 
 	return Record.normalize(readResult, self._defaults)
+end
+
+function ProfileStore:ViewProfileAsync(profileId)
+	local record, viewError = self:ViewRawAsync(profileId)
+
+	if not record then
+		return nil, viewError
+	end
+
+	return record.data, record.meta
 end
 
 function ProfileStore:WipeProfileAsync(profileId)

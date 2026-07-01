@@ -1,9 +1,12 @@
 [package]
-name = "uhowen/profile-lock-service"
-version = "0.1.0"
+name = "uhowen/profilelockservice"
+description = "Session-locked Roblox profile persistence with autosave, migrations, retries, and clean profile APIs."
+version = "0.2.0"
+license = "MIT"
+authors = ["Owen"]
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 exclude = ["**"]
-include = ["default.project.json", "init.luau", "src", "examples", "README.md"]
+include = ["default.project.json", "init.luau", "src", "examples", "README.md", "LICENSE"]
 
 [dependencies]

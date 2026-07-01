@@ -1,0 +1,7 @@
+.git
+Packages
+tests
+*.tar.gz
+aftman.toml
+default.project.json
+wally.toml

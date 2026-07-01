@@ -55,7 +55,23 @@ ProfileLockService/
 
 ## Install
 
-Require the module from a server-accessible location.
+### Wally
+
+```toml
+[dependencies]
+ProfileLockService = "uhowen/profilelockservice@0.2.0"
+```
+
+Then require it from your Wally packages folder.
+
+```luau
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ProfileLockService = require(ReplicatedStorage.Packages.ProfileLockService)
+```
+
+### Manual
+
+You can also require the module from a server-accessible location.
 
 ```luau
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -176,6 +192,20 @@ profile:Update(function(data)
 end)
 ```
 
+### Update one nested value
+
+```luau
+profile:UpdatePath({"progress", "stage"}, function(stage)
+	return stage + 1
+end, 1)
+```
+
+### Take a safe copy
+
+```luau
+local snapshot = profile:GetSnapshot()
+```
+
 ### Remove a value
 
 ```luau
@@ -294,12 +324,14 @@ local store = service:CreateStore({
 - `store:LoadProfileForPlayerAsync(player, loadOptions)`
 - `store:GetProfile(profileId)`
 - `store:GetProfileForPlayer(player)`
+- `store:HasProfile(profileId)`
 - `store:GetLoadedProfiles()`
 - `store:GetLoadedProfileCount()`
 - `store:GetStats()`
 - `store:SaveProfileAsync(profileId, force)`
 - `store:ReleaseProfileAsync(profileId, force)`
 - `store:ViewRawAsync(profileId)`
+- `store:ViewProfileAsync(profileId)`
 - `store:WipeProfileAsync(profileId)`
 - `store:BindToPlayerRemoving(players)`
 - `store:BindToClose()`
@@ -312,8 +344,10 @@ local store = service:CreateStore({
   Returns the player `UserId` only when the profile was loaded through `LoadProfileForPlayerAsync`.
 - `profile:GetKey()`
 - `profile:GetData()`
+- `profile:GetSnapshot()`
 - `profile:Get(path, fallback)`
 - `profile:GetMeta()`
+- `profile:GetState()`
 - `profile:GetLoadCount()`
 - `profile:GetLastLoadAt()`
 - `profile:GetLastSaveAt()`
@@ -323,6 +357,7 @@ local store = service:CreateStore({
 - `profile:MarkDirty()`
 - `profile:Touch()`
 - `profile:Set(path, value)`
+- `profile:UpdatePath(path, updater, fallback)`
 - `profile:Increment(path, amount)`
 - `profile:Remove(path)`
 - `profile:Reconcile()`

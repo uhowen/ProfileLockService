@@ -1,10 +1,14 @@
 {
-  "name": "profile-lock-service",
+  "name": "profilelockservice",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
       "ProfileLockService": {
-        "$path": "."
+        "$className": "ModuleScript",
+        "$path": "init.luau",
+        "src": {
+          "$path": "src"
+        }
       }
     }
   }

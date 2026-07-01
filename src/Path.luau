@@ -63,9 +63,17 @@ local function incrementAtPath(root, path, amount)
 	return nextValue
 end
 
+local function updateAtPath(root, path, updater, fallback)
+	local currentValue = getAtPath(root, path, fallback)
+	local nextValue = updater(currentValue)
+	setAtPath(root, path, nextValue)
+	return nextValue
+end
+
 return {
 	getAtPath = getAtPath,
 	setAtPath = setAtPath,
 	removeAtPath = removeAtPath,
 	incrementAtPath = incrementAtPath,
+	updateAtPath = updateAtPath,
 }

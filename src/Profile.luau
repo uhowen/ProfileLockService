@@ -45,6 +45,10 @@ function Profile:GetData()
 	return self._data
 end
 
+function Profile:GetSnapshot()
+	return DeepCopy(self._data)
+end
+
 function Profile:Get(path, fallback)
 	if path == nil then
 		return self._data
@@ -91,6 +95,16 @@ function Profile:Set(path, value)
 	return value
 end
 
+function Profile:UpdatePath(path, updater, fallback)
+	if type(updater) ~= "function" then
+		error("updater must be a function")
+	end
+
+	local nextValue = Path.updateAtPath(self._data, path, updater, fallback)
+	self._dirty = true
+	return nextValue
+end
+
 function Profile:Increment(path, amount)
 	local nextValue = Path.incrementAtPath(self._data, path, amount or 1)
 	self._dirty = true
@@ -134,6 +148,20 @@ end
 function Profile:Touch()
 	self._dirty = true
 	return self
+end
+
+function Profile:GetState()
+	return {
+		profileId = self._profileId,
+		userId = self._userId,
+		key = self._key,
+		dirty = self._dirty,
+		released = self._released,
+		lastLoadAt = self._lastLoadAt,
+		lastSaveAt = self._lastSaveAt,
+		lastHeartbeatAt = self._lastHeartbeatAt,
+		loadCount = self._loadCount,
+	}
 end
 
 function Profile:SaveAsync(force)
