@@ -1,7 +1,7 @@
 [package]
 name = "uhowen/profilelockservice"
-description = "Session-locked Roblox profile persistence with autosave, migrations, retries, and clean profile APIs."
-version = "0.2.0"
+description = "Roblox profile data storage with session locks, autosave, migrations, and queued writes."
+version = "0.2.1"
 license = "MIT"
 authors = ["Owen"]
 registry = "https://github.com/UpliftGames/wally-index"

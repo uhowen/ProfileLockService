@@ -1,8 +1,8 @@
 # ProfileLockService
 
-`ProfileLockService` is a Roblox persistence library for games that want strict profile ownership, queued writes, autosave, migrations, and a cleaner API than raw `DataStoreService`.
+`ProfileLockService` is a Roblox persistence library for games that want one live owner per profile, queued writes, autosave, and migrations without building everything around raw `DataStoreService`.
 
-This is built to be generic.
+It is key-based.
 
 You do not have to use coins, cash, or any specific schema.
 
@@ -16,7 +16,7 @@ You choose:
 
 - one live session owns a profile at a time
 - dirty profiles autosave on an interval
-- clean profiles still refresh their session lock through a heartbeat
+- profiles that have not changed still refresh their session lock through a heartbeat
 - writes are queued per profile key
 - stale locks can be recovered with load policies
 - schema defaults and migrations are supported
@@ -59,7 +59,7 @@ ProfileLockService/
 
 ```toml
 [dependencies]
-ProfileLockService = "uhowen/profilelockservice@0.2.0"
+ProfileLockService = "uhowen/profilelockservice@0.2.1"
 ```
 
 Then require it from your Wally packages folder.
@@ -143,7 +143,7 @@ The normal flow is:
 4. Let autosave or manual saves write it
 5. Release the profile when the session ends
 
-## Generic profile keys
+## Profile keys
 
 The store is key-based, not cash-system-based.
 
@@ -228,7 +228,7 @@ profile:Touch()
 
 ## Autosave and session locks
 
-Two background systems keep the store healthy:
+Two background systems keep the store running:
 
 - `autoSaveInterval` saves dirty profiles
 - `sessionHeartbeatInterval` refreshes live locks even when nothing changed

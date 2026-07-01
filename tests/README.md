@@ -1,10 +1,10 @@
 # Tests
 
-`MemoryAdapter.selftest.luau` is a lightweight self-test for the library's risky paths without needing a full external test framework.
+`MemoryAdapter.selftest.luau` is a small self-test for the library's risky paths without needing a full external test framework.
 
 It covers:
 
-- generic profile ids
+- string and number profile ids
 - save and reload flow
 - failed `Profile:Update` rollback behavior
 - default reconciliation after reload
