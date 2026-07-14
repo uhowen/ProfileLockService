@@ -1,9 +1,11 @@
 # ProfileLockService
 
-`ProfileLockService` is a Roblox persistence library for games that want one live owner per profile, queued writes, autosave, and migrations without building everything around raw `DataStoreService`.
+`ProfileLockService` is a Roblox  library for games that want one live owner per profile, queued writes, autosave, and migrations without building everything around raw `DataStoreService`.
 
 It is key-based.
 
+
+also gng this stuff is in development so please uhh watch out for issues and lmk 
 You do not have to use coins, cash, or any specific schema.
 
 You choose:
